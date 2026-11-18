@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Information System</title>
+<!-- Supabase SDK for Live Cloud Sync -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {
+  --purple: #663399;
+  --dark-purple: #35145c;
+  --green: #24864b;
+  --gold: #e7b83f;
+  --red: #b93242;
+  --white: #ffffff;
+  --light: #f5f0fb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--light);
+  color: #29213a;
+}
+
+button, input, select { font: inherit; }
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 17px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover:not(:disabled) { opacity: 0.88; }
+button:disabled, input:disabled { cursor: not-allowed; }
+
+.primary { background: var(--purple); color: white; }
+.green { background: var(--green); color: white; }
+.gold { background: var(--gold); color: #342400; }
+.gray { background: #e6e1ed; color: #342b40; }
+.danger { background: var(--red); color: white; }
+
+header {
+  background: var(--dark-purple);
+  color: white;
+  padding: 18px;
+  text-align: center;
+  border-bottom: 5px solid var(--gold);
+}
+
+header h1 { margin: 5px; }
+
+.page { display: none; max-width: 950px; margin: 30px auto; padding: 25px; }
+.page.active { display: block; }
+.page.welcome.active { min-height: 75vh; display: flex; align-items: center; justify-content: center; }
+
+.panel {
+  background: white;
+  padding: 24px;
+  border-radius: 14px;
+  box-shadow: 0 4px 15px #00000015;
+  margin-bottom: 20px;
+}
+
+.center { text-align: center; }
+
+.welcome-card {
+  width: 100%;
+  max-width: 650px;
+  padding: 45px 25px;
+  text-align: center;
+  background: white;
+  border-radius: 20px;
+  border-top: 9px solid var(--gold);
+  box-shadow: 0 8px 25px #00000020;
+}
+
+.welcome-card h1 { color: var(--purple); font-size: 38px; }
+.start-button { font-size: 22px; padding: 16px 55px; margin-top: 20px; }
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cfc6dc;
+  border-radius: 8px;
+  margin: 7px 0 15px;
+}
+
+label { font-weight: bold; }
+
+.menu-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.menu-buttons button { flex: 1; min-width: 140px; }
+
+.quick-login-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 15px 0; }
+
+.quick-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: 2px solid #e1d8ec;
+  background: #faf7fc;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.quick-btn:hover { background: #f1ebfa; border-color: var(--purple); }
+
+.person-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.person-name { font-weight: 500; font-size: 16px; }
+.attendance-controls { display: flex; align-items: center; gap: 10px; }
+
+.mini-box {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 6px;
+  border: 2px solid #cfc6dc;
+  background: #f9f7fc;
+  color: #777;
+  font-size: 17px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-box.check-box.selected { background: var(--green); border-color: var(--green); color: white; }
+.mini-box.x-box.selected { background: var(--red); border-color: var(--red); color: white; }
+
+.status-label { min-width: 85px; text-align: right; font-size: 14px; font-weight: bold; }
+.actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.small { padding: 7px 10px; font-size: 13px; }
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: bold;
+  background: var(--light);
+  color: var(--purple);
+  margin-left: 6px;
+}
+
+.reset-timer-badge {
+  display: inline-block;
+  background: #f5f0fb;
+  color: #35145c;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--gold);
+}
+
+.topline { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+.sync-status { font-size: 12px; color: #665b73; font-weight: bold; }
+.sync-status::before { content: "● "; color: var(--green); }
+.sync-status.offline::before { color: var(--red); }
+
+.goodbye-card {
+  width: 100%;
+  max-width: 650px;
+  background: white;
+  border-radius: 20px;
+  padding: 55px 20px;
+  text-align: center;
+  border-bottom: 9px solid var(--gold);
+  box-shadow: 0 8px 25px #00000020;
+}
+
+.goodbye-card h1 { font-size: clamp(45px, 9vw, 75px); color: var(--purple); margin: 10px 0; }
+.back-button { font-size: 15px; padding: 11px 22px; margin-top: 20px; }
+.note { color: #665b73; font-size: 13px; }
+</style>
+
+<script>
+// YOUR SUPABASE CONFIGURATION (Pre-configured)
+const SUPABASE_URL = 'https://tatfyvvomrwjeqszynir.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_uXpFOHpZQH85V1pOJNs3_Q_2JAxg9TX';
+
+const RESET_DURATION_MS = 15 * 60 * 60 * 1000;
+const defaultPeople = {
+  classmates: ["Alex Santos", "Jamie Cruz", "Taylor Reyes", "Sofia Mendoza", "Liam Villanueva", "Chloe Bautista", "Ethan Navarro", "Mia Torres"],
+  teachers: ["Mr. Garcia", "Ms. Dela Cruz", "Mrs. Ramos", "Mr. Aquino"]
+};
+
+let supabaseInstance = null;
+let currentUser = null;
+let currentProfile = null;
+let people = structuredClone(defaultPeople);
+let attendance = {};
+let attendanceStartedAt = null;
+let currentGroup = "classmates";
+let realtimeChannel = null;
+let selectedUsernameForLogin = "";
+
+function configurationReady() {
+  return !SUPABASE_URL.includes('YOUR_SUPABASE_') && !SUPABASE_PUBLISHABLE_KEY.includes('YOUR_SUPABASE_');
+}
+
+async function initSupabase() {
+  if (!configurationReady()) {
+    alert("Supabase configuration missing!");
+    return;
+  }
+  const { createClient } = window.supabase;
+  supabaseInstance = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  const { data: { session } } = await supabaseInstance.auth.getSession();
+  if (session) {
+    await enterWorkspace(session.user);
+  }
+}
+
+async function selectAccount(username, roleName) {
+  selectedUsernameForLogin = username;
+  document.getElementById("selectedAccountTitle").textContent = `Logging in as: ${roleName}`;
+  document.getElementById("loginPassword").value = "";
+  document.getElementById("loginMessage").textContent = "";
+  showPage("passwordPromptPage");
+  document.getElementById("loginPassword").focus();
+}
+
+async function verifyAndLogin() {
+  const password = document.getElementById("loginPassword").value;
+  const emailMap = {
+    'admin': 'admin@sis.local',
+    'teacher': 'teacher@sis.local',
+    'student': 'student@sis.local'
+  };
+
+  const email = emailMap[selectedUsernameForLogin];
+  const { data, error } = await supabaseInstance.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    document.getElementById("loginMessage").textContent = "Incorrect password or account not setup.";
+    return;
+  }
+
+  await enterWorkspace(data.user);
+}
+
+async function enterWorkspace(user) {
+  currentUser = user;
+  const { data: profile, error } = await supabaseInstance.from('profiles').select('full_name, role').eq('user_id', user.id).single();
+  if (error || !profile) {
+    alert("Profile not found. Make sure you ran setup.sql in Supabase.");
+    await supabaseInstance.auth.signOut();
+    return;
+  }
+  currentProfile = profile;
+
+  const { data: state, error: stateError } = await supabaseInstance.from('sis_state').select('*').eq('id', 1).single();
+  if (stateError || !state) {
+    alert("Shared database state not found. Run setup.sql in Supabase.");
+    await supabaseInstance.auth.signOut();
+    return;
+  }
+
+  applyCloudState(state);
+  subscribeRealtime();
+
+  if (currentProfile.role === "Admin") {
+    document.getElementById("adminWelcomeUser").innerHTML = `Welcome, <strong>${currentProfile.full_name}</strong> <span class="role-badge">${currentProfile.role}</span>`;
+    showPage("adminDashboardPage");
+  } else if (currentProfile.role === "Teacher") {
+    document.getElementById("teacherWelcomeUser").innerHTML = `Welcome, <strong>${currentProfile.full_name}</strong> <span class="role-badge">${currentProfile.role}</span>`;
+    showPage("teacherDashboardPage");
+  } else {
+    document.getElementById("studentWelcomeUser").innerHTML = `Welcome, <strong>${currentProfile.full_name}</strong> <span class="role-badge">${currentProfile.role}</span>`;
+    showPage("studentDashboardPage");
+  }
+}
+
+function applyCloudState(row) {
+  people = row.people || structuredClone(defaultPeople);
+  attendance = row.attendance || {};
+  attendanceStartedAt = row.attendance_started_at || null;
+  updateResetTimerText();
+}
+
+function subscribeRealtime() {
+  if (realtimeChannel && supabaseInstance) {
+    supabaseInstance.removeChannel(realtimeChannel);
+  }
+  realtimeChannel = supabaseInstance.channel('sis-live-updates')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sis_state', filter: 'id=eq.1' }, payload => {
+      applyCloudState(payload.new);
+      if (document.getElementById('managePage').classList.contains('active')) renderPeople();
+      if (document.getElementById('attendancePage').classList.contains('active')) renderAttendance();
+    })
+    .subscribe(status => {
+      const offline = status !== 'SUBSCRIBED';
+      document.querySelectorAll('.sync-status').forEach(el => {
+        el.classList.toggle('offline', offline);
+        el.textContent = offline ? 'Connection issue' : 'Live cloud sync';
+      });
+    });
+}
+
+async function saveCloudState() {
+  if (!isAdmin()) throw new Error("Only Admins can modify records.");
+  const { error } = await supabaseInstance.from('sis_state').update({
+    people: people,
+    attendance: attendance,
+    attendance_started_at: attendanceStartedAt
+  }).eq('id', 1);
+
+  if (error) throw error;
+}
+
+function isAdmin() { return currentProfile?.role === "Admin"; }
+function isTeacher() { return currentProfile?.role === "Teacher"; }
+function isStudent() { return currentProfile?.role === "Student"; }
+
+function showPage(pageId) {
+  if (pageId === "managePage" && !isAdmin()) {
+    alert("Access denied: Only Admins can manage names.");
+    return;
+  }
+  document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
+  document.getElementById(pageId).classList.add("active");
+}
+
+function logout() {
+  if (realtimeChannel && supabaseInstance) supabaseInstance.removeChannel(realtimeChannel);
+  supabaseInstance.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  showPage("homePage");
+}
+
+function openManagePage() {
+  if (!isAdmin()) return;
+  document.getElementById("newName").value = "";
+  renderPeople();
+  showPage("managePage");
+}
+
+function openAttendance(group) {
+  if (!currentUser) return;
+  currentGroup = group;
+
+  document.getElementById("attendanceTitle").textContent = group === "classmates" ? "CLASSMATES ATTENDANCE" : "TEACHER ATTENDANCE";
+  document.getElementById("attendanceDate").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("searchName").value = "";
+  document.getElementById("saveButton").style.display = isAdmin() ? "inline-block" : "none";
+
+  if (isAdmin()) {
+    document.getElementById("attendanceRoleNote").textContent = "Admin Mode: Click ✓ for Present or ✕ for Absent, changes sync live.";
+  } else {
+    document.getElementById("attendanceRoleNote").textContent = `${currentProfile.role} View-Only Mode: Live synced with classmates.`;
+  }
+
+  updateResetTimerText();
+  renderAttendance();
+  showPage("attendancePage");
+}
+
+function renderPeople() {
+  if (!isAdmin()) return;
+  const group = document.getElementById("manageGroup").value;
+  const list = document.getElementById("peopleList");
+  list.innerHTML = "";
+
+  if (!people[group].length) {
+    list.innerHTML = "<p class='note'>No names saved in this group yet.</p>";
+    return;
+  }
+
+  people[group].forEach((name, index) => {
+    const row = document.createElement("div");
+    row.className = "person-row";
+    row.innerHTML = `<span class="person-name">${name}</span>
+      <div class="actions">
+        <button class="gold small" onclick="editPerson(${index})">EDIT</button>
+        <button class="danger small" onclick="deletePerson(${index})">DELETE</button>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+async function addPerson() {
+  if (!isAdmin()) return;
+  const group = document.getElementById("manageGroup").value;
+  const input = document.getElementById("newName");
+  const name = input.value.trim();
+
+  if (!name) return alert("Please enter a name.");
+  if (people[group].some(n => n.toLowerCase() === name.toLowerCase())) return alert("Name already listed.");
+
+  people[group].push(name);
+  input.value = "";
+  try {
+    await saveCloudState();
+    renderPeople();
+  } catch (e) { alert("Error saving: " + e.message); }
+}
+
+async function editPerson(index) {
+  if (!isAdmin()) return;
+  const group = document.getElementById("manageGroup").value;
+  const oldName = people[group][index];
+  const updated = prompt("Enter new name:", oldName);
+
+  if (updated && updated.trim()) {
+    const trimmed = updated.trim();
+    people[group][index] = trimmed;
+    Object.keys(attendance).forEach(k => {
+      if (k.endsWith("_" + group) && attendance[k][oldName]) {
+        attendance[k][trimmed] = attendance[k][oldName];
+        delete attendance[k][oldName];
+      }
+    });
+    try {
+      await saveCloudState();
+      renderPeople();
+    } catch (e) { alert("Error saving: " + e.message); }
+  }
+}
+
+async function deletePerson(index) {
+  if (!isAdmin()) return;
+  const group = document.getElementById("manageGroup").value;
+  if (confirm(`Delete ${people[group][index]}?`)) {
+    people[group].splice(index, 1);
+    try {
+      await saveCloudState();
+      renderPeople();
+    } catch (e) { alert("Error saving: " + e.message); }
+  }
+}
+
+async function resetDefaultNames() {
+  if (!isAdmin()) return;
+  if (confirm("Reset to default names?")) {
+    people = structuredClone(defaultPeople);
+    try {
+      await saveCloudState();
+      renderPeople();
+    } catch (e) { alert("Error saving: " + e.message); }
+  }
+}
+
+function renderAttendance() {
+  const list = document.getElementById("attendanceList");
+  const search = document.getElementById("searchName").value.toLowerCase();
+  const date = document.getElementById("attendanceDate").value;
+  list.innerHTML = "";
+
+  const recordKey = date + "_" + currentGroup;
+  const saved = attendance[recordKey] || {};
+
+  people[currentGroup].forEach(name => {
+    if (!name.toLowerCase().includes(search)) return;
+
+    let status = saved[name] || "unmarked";
+    const row = document.createElement("div");
+    row.className = "person-row";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "person-name";
+    nameSpan.textContent = name;
+
+    const controls = document.createElement("div");
+    controls.className = "attendance-controls";
+
+    const checkBtn = document.createElement("button");
+    checkBtn.className = "mini-box check-box" + (status === "present" ? " selected" : "");
+    checkBtn.textContent = "✓";
+    checkBtn.disabled = !isAdmin();
+
+    const xBtn = document.createElement("button");
+    xBtn.className = "mini-box x-box" + (status === "absent" ? " selected" : "");
+    xBtn.textContent = "✕";
+    xBtn.disabled = !isAdmin();
+
+    const statusText = document.createElement("span");
+    statusText.className = "status-label";
+
+    const paint = () => {
+      checkBtn.classList.toggle("selected", status === "present");
+      xBtn.classList.toggle("selected", status === "absent");
+      statusText.textContent = status === "present" ? "Present" : status === "absent" ? "Absent" : "Unmarked";
+      statusText.style.color = status === "present" ? "#24864b" : status === "absent" ? "#b93242" : "#777";
+    };
+
+    const setStatus = async (next) => {
+      if (!isAdmin()) return;
+      status = status === next ? "unmarked" : next;
+      saved[name] = status === "unmarked" ? null : status;
+      attendance[recordKey] = saved;
+      paint();
+      try {
+        await saveCloudState();
+      } catch (e) { alert("Could not sync change: " + e.message); }
+    };
+
+    checkBtn.onclick = () => setStatus("present");
+    xBtn.onclick = () => setStatus("absent");
+    paint();
+
+    controls.append(checkBtn, xBtn, statusText);
+    row.append(nameSpan, controls);
+    list.appendChild(row);
+  });
+}
+
+async function saveAttendance() {
+  if (!isAdmin()) return;
+  const date = document.getElementById("attendanceDate").value;
+  if (!date) return alert("Select a date.");
+
+  attendanceStartedAt = new Date().toISOString();
+  try {
+    await saveCloudState();
+    showPage("finishPage");
+  } catch (e) { alert("Could not save: " + e.message); }
+}
+
+function updateResetTimerText() {
+  const banner = document.getElementById("resetTimerBanner");
+  if (!banner) return;
+  if (!attendanceStartedAt) {
+    banner.textContent = "Auto-Reset: Clears 15 hours after the last save.";
+    return;
+  }
+  const left = RESET_DURATION_MS - (Date.now() - new Date(attendanceStartedAt).getTime());
+  if (left <= 0) {
+    banner.textContent = "Attendance period expired.";
+    return;
+  }
+  const h = Math.floor(left / 3600000);
+  const m = Math.floor((left % 3600000) / 60000);
+  banner.textContent = `Auto-Reset in: ${h}h ${m}m`;
+}
+
+function backupData() {
+  if (!isAdmin()) return;
+  const blob = new Blob([JSON.stringify({ people, attendance, attendanceStartedAt }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sis-backup.json';
+  a.click();
+}
+
+async function restoreData(event) {
+  if (!isAdmin()) return;
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    people = data.people;
+    attendance = data.attendance;
+    attendanceStartedAt = data.attendanceStartedAt || new Date().toISOString();
+    await saveCloudState();
+    alert("Cloud database restored from backup!");
+  } catch (e) { alert("Invalid backup file."); }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("attendanceDate")?.addEventListener("change", renderAttendance);
+  initSupabase();
+});
+</script>
+</head>
+
+<body>
+
+<header>
+  <h1>STUDENT INFORMATION SYSTEM</h1>
+  <p>Live Cloud-Synced Attendance</p>
+</header>
+
+<!-- HOME PAGE -->
+<section id="homePage" class="page active welcome">
+  <div class="welcome-card">
+    <h1>WELCOME!</h1>
+    <h2>Student Information System</h2>
+    <p>Real-time online attendance across all devices.</p>
+    <button class="primary start-button" onclick="showPage('loginPage')">START</button>
+  </div>
+</section>
+
+<!-- LOGIN PAGE -->
+<section id="loginPage" class="page">
+  <div class="panel center" style="max-width: 500px; margin: auto;">
+    <h2>CHOOSE ACCOUNT</h2>
+    <p class="note">Click your account type to log in:</p>
+
+    <div class="quick-login-grid">
+      <button class="quick-btn" onclick="selectAccount('admin', 'Administrator')">
+        <span style="font-weight: bold; color: var(--purple);">👑 Administrator Account</span>
+        <span style="font-size: 13px; color: #666;">Enter Password ➔</span>
+      </button>
+      <button class="quick-btn" onclick="selectAccount('teacher', 'Teacher Account')">
+        <span style="font-weight: bold; color: var(--green);">📚 Teacher Account</span>
+        <span style="font-size: 13px; color: #666;">Enter Password ➔</span>
+      </button>
+      <button class="quick-btn" onclick="selectAccount('student', 'Student Account')">
+        <span style="font-weight: bold; color: #35145c;">🎓 Student Account</span>
+        <span style="font-size: 13px; color: #666;">Enter Password ➔</span>
+      </button>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button class="gray" style="width: 100%;" onclick="showPage('homePage')">BACK TO HOME</button>
+    </div>
+  </div>
+</section>
+
+<!-- PASSWORD PROMPT -->
+<section id="passwordPromptPage" class="page">
+  <div class="panel center" style="max-width: 450px; margin: auto;">
+    <h2 id="selectedAccountTitle">LOGIN</h2>
+    <p class="note">Please enter your password:</p>
+
+    <div style="text-align: left;">
+      <label>Password</label>
+      <input id="loginPassword" type="password" placeholder="Enter password" onkeydown="if(event.key==='Enter') verifyAndLogin()">
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="primary" style="flex: 2;" onclick="verifyAndLogin()">CONFIRM LOGIN</button>
+      <button class="gray" style="flex: 1;" onclick="showPage('loginPage')">BACK</button>
+    </div>
+    <p id="loginMessage" style="color:var(--red); font-weight:bold; margin-top: 15px;"></p>
+  </div>
+</section>
+
+<!-- ADMIN DASHBOARD -->
+<section id="adminDashboardPage" class="page">
+  <div class="panel">
+    <div class="topline">
+      <h2>ADMIN DASHBOARD</h2>
+      <span class="sync-status">Live cloud sync</span>
+    </div>
+    <p id="adminWelcomeUser"></p>
+
+    <div class="menu-buttons">
+      <button class="primary" onclick="openAttendance('classmates')">CLASSMATES ATTENDANCE</button>
+      <button class="green" onclick="openAttendance('teachers')">TEACHER ATTENDANCE</button>
+    </div>
+
+    <hr>
+    <h3>ADMINISTRATION</h3>
+    <div class="menu-buttons">
+      <button class="gold" onclick="openManagePage()">MANAGE NAMES</button>
+      <button class="gray" onclick="backupData()">BACKUP DATA</button>
+      <button class="gray" onclick="document.getElementById('restoreFile').click()">RESTORE BACKUP</button>
+      <input id="restoreFile" type="file" accept=".json" style="display:none" onchange="restoreData(event)">
+    </div>
+    <button class="danger" onclick="logout()">LOG OUT</button>
+  </div>
+</section>
+
+<!-- TEACHER DASHBOARD -->
+<section id="teacherDashboardPage" class="page">
+  <div class="panel">
+    <div class="topline">
+      <h2>TEACHER DASHBOARD</h2>
+      <span class="sync-status">Live cloud sync</span>
+    </div>
+    <p id="teacherWelcomeUser"></p>
+    <div class="menu-buttons">
+      <button class="primary" onclick="openAttendance('classmates')">CLASSMATES ATTENDANCE</button>
+      <button class="green" onclick="openAttendance('teachers')">TEACHER ATTENDANCE</button>
+    </div>
+    <button class="danger" onclick="logout()">LOG OUT</button>
+  </div>
+</section>
+
+<!-- STUDENT DASHBOARD -->
+<section id="studentDashboardPage" class="page">
+  <div class="panel">
+    <div class="topline">
+      <h2>STUDENT DASHBOARD</h2>
+      <span class="sync-status">Live cloud sync</span>
+    </div>
+    <p id="studentWelcomeUser"></p>
+    <div class="menu-buttons">
+      <button class="primary" onclick="openAttendance('classmates')">CLASSMATES ATTENDANCE</button>
+      <button class="green" onclick="openAttendance('teachers')">TEACHER ATTENDANCE</button>
+    </div>
+    <button class="danger" onclick="logout()">LOG OUT</button>
+  </div>
+</section>
+
+<!-- MANAGE NAMES -->
+<section id="managePage" class="page">
+  <div class="panel">
+    <h2>MANAGE NAMES <span class="role-badge">Admin Only</span></h2>
+    <label>Choose a group</label>
+    <select id="manageGroup" onchange="renderPeople()">
+      <option value="classmates">Classmates</option>
+      <option value="teachers">Teachers</option>
+    </select>
+
+    <label>Add New Name</label>
+    <input id="newName" placeholder="Enter name" onkeydown="if(event.key==='Enter') addPerson()">
+
+    <button class="green" onclick="addPerson()">ADD NAME</button>
+    <button class="gray" onclick="resetDefaultNames()">RESET DEFAULTS</button>
+
+    <hr>
+    <h3>Saved Names</h3>
+    <div id="peopleList"></div>
+    <br>
+    <button class="gray" onclick="showPage('adminDashboardPage')">BACK TO DASHBOARD</button>
+  </div>
+</section>
+
+<!-- ATTENDANCE PAGE -->
+<section id="attendancePage" class="page">
+  <div class="panel">
+    <div class="topline">
+      <h2 id="attendanceTitle">ATTENDANCE</h2>
+      <span class="sync-status">Live cloud sync</span>
+    </div>
+    <p id="attendanceRoleNote" class="note"></p>
+    <div id="resetTimerBanner" class="reset-timer-badge"></div>
+
+    <label>Date</label>
+    <input type="date" id="attendanceDate">
+
+    <label>Search name</label>
+    <input id="searchName" placeholder="Search..." oninput="renderAttendance()">
+
+    <div id="attendanceList"></div>
+    <p id="attendanceMessage"></p>
+
+    <button class="green" id="saveButton" onclick="saveAttendance()">SAVE ATTENDANCE</button>
+    <button class="gray" onclick="showPage(isAdmin() ? 'adminDashboardPage' : (isTeacher() ? 'teacherDashboardPage' : 'studentDashboardPage'))">BACK TO DASHBOARD</button>
+  </div>
+</section>
+
+<!-- FINISH PAGE -->
+<section id="finishPage" class="page welcome">
+  <div class="goodbye-card">
+    <h1>SAVED!</h1>
+    <h2>Attendance Successfully Synced</h2>
+    <p>Your updates are now live across all classmates' devices.</p>
+    <button class="primary back-button" onclick="showPage(isAdmin() ? 'adminDashboardPage' : 'teacherDashboardPage')">BACK TO DASHBOARD</button>
+  </div>
+</section>
+
+</body>
+</html>
